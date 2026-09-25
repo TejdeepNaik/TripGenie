@@ -23,3 +23,5 @@ pnpm-debug.log*
 # system
 .DS_Store
 *.pem
+.vercel
+apps/api/api/index.js
