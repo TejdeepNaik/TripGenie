@@ -12,9 +12,9 @@
     }
   },
   "scripts": {
-    "build": "tsc",
-    "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit"
+    "build": "pnpm --filter @tripgenie/config build && tsc",
+    "typecheck": "pnpm --filter @tripgenie/config build && tsc --noEmit",
+    "lint": "pnpm --filter @tripgenie/config build && tsc --noEmit"
   },
   "dependencies": {
     "@tripgenie/config": "workspace:*"
