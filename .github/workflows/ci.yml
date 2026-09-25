@@ -1,0 +1,82 @@
+name: TripGenie CI Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  ci-quality-gate:
+    name: CI Build, Migration & Test Verification
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tripgenie_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tripgenie_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/tripgenie_ci?schema=public"
+      SESSION_SECRET: "tripgenie_ci_pipeline_secret_key_32_bytes_min_long"
+      PAYMENT_PROVIDER: "mock"
+
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pnpm Package Manager
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Get pnpm Cache Directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+
+      - name: Cache pnpm Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install Workspace Dependencies (Deterministic)
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client Code
+        run: pnpm db:generate
+
+      - name: Migration Safety Check & Deploy
+        run: pnpm --filter @tripgenie/api exec prisma migrate deploy
+
+      - name: Run ESLint Quality Check
+        run: pnpm lint
+
+      - name: Run TypeScript Typecheck
+        run: pnpm typecheck
+
+      - name: Run Automated Unit & Integration Tests
+        run: pnpm --filter @tripgenie/api test
+
+      - name: Run Workspace Production Build Verification
+        run: pnpm build

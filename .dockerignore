@@ -1,0 +1,15 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+node_modules
+dist
+.next
+coverage
+logs
+*.log
+scratch
+tmp
+.vscode
+.idea

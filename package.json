@@ -1,0 +1,21 @@
+{
+  "name": "tripgenie",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "pnpm --parallel --recursive run dev",
+    "build": "pnpm --recursive run build",
+    "lint": "pnpm --recursive run lint",
+    "typecheck": "pnpm --recursive run typecheck",
+    "verify:production": "pnpm typecheck && pnpm lint && pnpm --filter @tripgenie/api test && pnpm build",
+    "verify:staging": "pnpm typecheck && pnpm lint && pnpm --filter @tripgenie/api test && pnpm build",
+    "db:generate": "pnpm --filter @tripgenie/api db:generate",
+    "db:migrate": "pnpm --filter @tripgenie/api db:migrate",
+    "db:migrate:deploy": "pnpm --filter @tripgenie/api exec prisma migrate deploy",
+    "db:studio": "pnpm --filter @tripgenie/api db:studio",
+    "db:seed": "pnpm --filter @tripgenie/api db:seed"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

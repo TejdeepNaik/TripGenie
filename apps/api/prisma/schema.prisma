@@ -1,0 +1,397 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  OWNER
+  ADMIN
+}
+
+enum TripStatus {
+  DRAFT
+  PLANNING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum TripRole {
+  OWNER
+  MEMBER
+}
+
+enum ExpenseCategory {
+  HOTEL
+  FOOD
+  TRANSPORT
+  RENTAL
+  ACTIVITY
+  ENTERTAINMENT
+  SHOPPING
+  FLIGHT
+  TRAIN
+  MISCELLANEOUS
+}
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  REFUNDED
+  NO_SHOW
+}
+
+enum BookingType {
+  RESTAURANT
+  ACTIVITY
+  ATTRACTION
+  ENTERTAINMENT
+  RENTAL
+  OTHER
+}
+
+enum PaymentStatus {
+  CREATED
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum RefundStatus {
+  CREATED
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum PaymentProviderType {
+  MOCK
+  STRIPE
+  RAZORPAY
+}
+
+model User {
+  id            String          @id @default(uuid()) @db.Uuid
+  email         String          @unique
+  name          String
+  passwordHash  String
+  avatarUrl     String?
+  role          Role            @default(CUSTOMER)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  preference    UserPreference?
+  sessions      Session[]
+  ownedTrips    Trip[]          @relation("TripOwner")
+  memberships   TripMember[]
+  savedPlaces   SavedPlace[]
+  expensesPaid  Expense[]       @relation("ExpensePayer")
+  expenseSplits ExpenseSplit[]
+  bookings      Booking[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model UserPreference {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @unique @db.Uuid
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  preferredCurrency String   @default("USD")
+  theme             String   @default("dark")
+  language          String   @default("en")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Trip {
+  id          String        @id @default(uuid()) @db.Uuid
+  ownerId     String        @db.Uuid
+  owner       User          @relation("TripOwner", fields: [ownerId], references: [id])
+  title       String
+  destination String
+  startDate   DateTime
+  endDate     DateTime
+  budget      Decimal?      @db.Decimal(12, 2)
+  currency    String        @default("USD")
+  status      TripStatus    @default(PLANNING)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  members     TripMember[]
+  days        TripDay[]
+  expenses    Expense[]
+  savedPlaces SavedPlace[]
+  bookings    Booking[]
+
+  @@index([ownerId])
+  @@index([startDate, endDate])
+  @@index([status])
+}
+
+model TripMember {
+  id       String   @id @default(uuid()) @db.Uuid
+  tripId   String   @db.Uuid
+  trip     Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  userId   String   @db.Uuid
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     TripRole @default(MEMBER)
+  joinedAt DateTime @default(now())
+
+  @@unique([tripId, userId])
+  @@index([userId])
+  @@index([tripId])
+}
+
+model TripDay {
+  id        String     @id @default(uuid()) @db.Uuid
+  tripId    String     @db.Uuid
+  trip      Trip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  date      DateTime
+  title     String?
+  note      String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  activities Activity[]
+
+  @@index([tripId])
+  @@index([date])
+}
+
+model Place {
+  id          String       @id @default(uuid()) @db.Uuid
+  externalId  String?      @unique
+  name        String
+  description String?
+  category    String?
+  city        String?
+  country     String?
+  latitude    Float?
+  longitude   Float?
+  address     String?
+  rating      Float?
+  priceLevel  Int?
+  imageUrl    String?
+  metadata    Json?
+  provider    String?      @default("database")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  savedPlaces SavedPlace[]
+  activities  Activity[]
+  bookings    Booking[]
+
+  @@index([externalId])
+  @@index([latitude, longitude])
+  @@index([category])
+  @@index([city])
+}
+
+model Activity {
+  id              String   @id @default(uuid()) @db.Uuid
+  tripDayId       String   @db.Uuid
+  tripDay         TripDay  @relation(fields: [tripDayId], references: [id], onDelete: Cascade)
+  placeId         String?  @db.Uuid
+  place           Place?   @relation(fields: [placeId], references: [id], onDelete: SetNull)
+  title           String
+  description     String?
+  startTime       String?
+  endTime         String?
+  durationMinutes Int?
+  estimatedCost   Decimal? @db.Decimal(12, 2)
+  notes           String?
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tripDayId])
+  @@index([placeId])
+  @@index([sortOrder])
+}
+
+model SavedPlace {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  placeId   String   @db.Uuid
+  place     Place    @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  tripId    String?  @db.Uuid
+  trip      Trip?    @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  notes     String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([placeId])
+  @@index([tripId])
+}
+
+model Expense {
+  id          String          @id @default(uuid()) @db.Uuid
+  tripId      String          @db.Uuid
+  trip        Trip            @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  payerId     String          @db.Uuid
+  payer       User            @relation("ExpensePayer", fields: [payerId], references: [id])
+  amount      Decimal         @db.Decimal(12, 2)
+  currency    String          @default("USD")
+  category    ExpenseCategory @default(MISCELLANEOUS)
+  description String
+  expenseDate DateTime        @default(now())
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  splits      ExpenseSplit[]
+
+  @@index([tripId])
+  @@index([payerId])
+  @@index([category])
+}
+
+model ExpenseSplit {
+  id        String   @id @default(uuid()) @db.Uuid
+  expenseId String   @db.Uuid
+  expense   Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Decimal  @db.Decimal(12, 2)
+
+  @@unique([expenseId, userId])
+  @@index([expenseId])
+  @@index([userId])
+}
+
+model Booking {
+  id          String        @id @default(uuid()) @db.Uuid
+  userId      String        @db.Uuid
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tripId      String?       @db.Uuid
+  trip        Trip?         @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  placeId     String?       @db.Uuid
+  place       Place?        @relation(fields: [placeId], references: [id], onDelete: SetNull)
+  listingId   String?
+  bookingType BookingType   @default(ACTIVITY)
+  status      BookingStatus @default(CONFIRMED)
+  bookingDate DateTime
+  startTime   String?
+  endTime     String?
+  guestCount  Int           @default(1)
+  unitPrice   Decimal       @db.Decimal(12, 2)
+  totalAmount Decimal       @db.Decimal(12, 2)
+  currency    String        @default("USD")
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  payments    Payment[]
+  refunds     Refund[]
+
+  @@index([userId])
+  @@index([tripId])
+  @@index([placeId])
+  @@index([status])
+  @@index([bookingDate])
+}
+
+model Payment {
+  id                String              @id @default(uuid()) @db.Uuid
+  bookingId         String              @db.Uuid
+  booking           Booking             @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  amount            Decimal             @db.Decimal(12, 2)
+  currency          String              @default("USD")
+  status            PaymentStatus       @default(CREATED)
+  provider          PaymentProviderType @default(MOCK)
+  providerPaymentId String?
+  idempotencyKey    String              @unique
+  failureReason     String?
+  rawEventLog       Json?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  refunds           Refund[]
+
+  @@index([bookingId])
+  @@index([status])
+  @@index([idempotencyKey])
+}
+
+model Refund {
+  id               String              @id @default(uuid()) @db.Uuid
+  paymentId        String              @db.Uuid
+  payment          Payment             @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  bookingId        String              @db.Uuid
+  booking          Booking             @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  amount           Decimal             @db.Decimal(12, 2)
+  currency         String              @default("USD")
+  status           RefundStatus        @default(PENDING)
+  provider         PaymentProviderType @default(MOCK)
+  providerRefundId String?
+  idempotencyKey   String              @unique
+  reason           String?
+  failureReason    String?
+  rawEventLog       Json?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([paymentId])
+  @@index([bookingId])
+  @@index([status])
+  @@index([idempotencyKey])
+}
+
+model PaymentAuditLog {
+  id              String              @id @default(uuid()) @db.Uuid
+  provider        PaymentProviderType
+  providerEventId String?             @unique
+  eventType       String
+  paymentId       String?             @db.Uuid
+  refundId        String?             @db.Uuid
+  bookingId       String?             @db.Uuid
+  status          String
+  payload         Json?
+  createdAt       DateTime            @default(now())
+
+  @@index([paymentId])
+  @@index([refundId])
+  @@index([bookingId])
+  @@index([eventType])
+}
+
+model ProviderEventLog {
+  id              String              @id @default(uuid()) @db.Uuid
+  provider        PaymentProviderType
+  providerEventId String              @unique
+  eventType       String
+  status          String              @default("PROCESSED")
+  attempts        Int                 @default(1)
+  errorMessage    String?
+  processedAt     DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([providerEventId])
+  @@index([eventType])
+  @@index([status])
+}
+
