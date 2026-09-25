@@ -226,40 +226,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Architecture Integrity Summary */}
-      <section className="max-w-5xl mx-auto px-6 py-8 w-full">
-        <Card title="System Verification & Architecture" className="border-slate-200 bg-white">
-          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-              <span className="text-slate-400 font-mono text-[10px] uppercase">Database Engine</span>
-              <p className="font-semibold text-slate-900">PostgreSQL 16</p>
-              <Badge variant="success" size="sm">Row Locks Active</Badge>
-            </div>
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-              <span className="text-slate-400 font-mono text-[10px] uppercase">Payment Provider</span>
-              <p className="font-semibold text-slate-900">Mock / Razorpay Test</p>
-              <Badge variant="purple" size="sm">Provider Agnostic</Badge>
-            </div>
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-              <span className="text-slate-400 font-mono text-[10px] uppercase">Test Suite</span>
-              <p className="font-semibold text-slate-900">119 E2E Tests</p>
-              <Badge variant="success" size="sm">100% Passing</Badge>
-            </div>
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-              <span className="text-slate-400 font-mono text-[10px] uppercase">Active Session</span>
-              <p className="font-semibold text-slate-900 truncate">{isAuthenticated && user ? user.email : 'Guest User'}</p>
-              <Badge variant={isAuthenticated ? 'success' : 'neutral'} size="sm">
-                {isAuthenticated ? user?.role : 'Unauthenticated'}
-              </Badge>
-            </div>
-          </div>
-        </Card>
-      </section>
-
       {/* Footer */}
       <footer className="mt-auto border-t border-slate-200 bg-white py-8 px-6 text-center text-xs text-slate-500 space-y-2">
         <p>TripGenie Platform &copy; 2026. Built with Next.js 14, Fastify, Prisma ORM & Tailwind CSS.</p>
-        <p className="text-[10px] font-mono text-slate-400">All payment transactions are conducted in sandbox test mode.</p>
       </footer>
     </div>
   );
